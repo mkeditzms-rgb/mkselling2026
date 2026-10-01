@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Limburg Power Solutions | Spare Parts</title>
+<meta name="description" content="Generator and engine spare parts online catalogue and management system">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--bg:#f4f6f8;--card:#fff;--text:#17202a;--muted:#68737d;--brand:#0b5ed7;--dark:#111827;--line:#e4e8ed;--danger:#dc3545;--ok:#198754}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text)}
+button,input,select,textarea{font:inherit}button{cursor:pointer;border:0}.hidden{display:none!important}
+.top{background:var(--dark);color:#fff;padding:9px 5%;font-size:13px}.nav{background:#fff;border-bottom:1px solid var(--line);padding:15px 5%;display:flex;align-items:center;gap:20px;position:sticky;top:0;z-index:20}
+.logo{font-weight:800;font-size:20px;margin-right:auto}.logo span{color:var(--brand)}.nav button{background:none;color:var(--text);padding:8px 10px}
+.btn{padding:10px 15px;border-radius:8px;background:var(--brand);color:#fff;font-weight:600}.btn.secondary{background:#eef3f8;color:#1d2935}.btn.danger{background:var(--danger)}
+.hero{padding:65px 5%;background:linear-gradient(135deg,#0f172a,#174ea6);color:#fff}.hero h1{font-size:clamp(32px,5vw,56px);max-width:800px;margin:0 0 12px}.hero p{max-width:650px;color:#dbe7ff;font-size:18px}
+.wrap{width:90%;max-width:1250px;margin:0 auto}.section{padding:38px 0}.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}.toolbar input,.toolbar select,.form input,.form select,.form textarea{border:1px solid var(--line);border-radius:8px;padding:11px;background:#fff}.toolbar input{flex:1;min-width:220px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px}.card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 2px 8px #00000008}.pic{height:180px;background:#eef1f4;display:flex;align-items:center;justify-content:center}.pic img{width:100%;height:100%;object-fit:contain}.body{padding:15px}.pn{color:var(--brand);font-size:12px;font-weight:700}.price{font-size:20px;font-weight:800;margin:8px 0}.stock{font-size:12px;color:var(--ok)}.muted{color:var(--muted)}
+.modal{position:fixed;inset:0;background:#0008;display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}.modalbox{background:#fff;border-radius:14px;width:min(680px,100%);max-height:90vh;overflow:auto;padding:22px}.form{display:grid;gap:11px}.row{display:grid;grid-template-columns:1fr 1fr;gap:11px}.form label{font-size:12px;font-weight:700;color:#53606b}
+.admin{min-height:calc(100vh - 70px)}.side{background:#111827;color:#fff;width:230px;padding:18px;position:fixed;top:70px;bottom:0}.side button{width:100%;text-align:left;background:none;color:#dbe2ea;padding:12px;border-radius:8px;margin:2px 0}.side button.active,.side button:hover{background:#253247;color:#fff}.main{margin-left:230px;padding:25px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px}.stat b{font-size:28px}.tablewrap{overflow:auto;background:#fff;border:1px solid var(--line);border-radius:12px}.table{width:100%;border-collapse:collapse;min-width:850px}.table th,.table td{padding:11px;border-bottom:1px solid var(--line);text-align:left;font-size:13px}.table th{background:#f8fafc}.actions{display:flex;gap:6px;flex-wrap:wrap}
+.cart{position:fixed;right:18px;bottom:18px;z-index:30}.badge{background:var(--danger);color:#fff;border-radius:20px;padding:2px 7px;font-size:11px}
+.toast{position:fixed;right:18px;top:85px;background:#111827;color:#fff;padding:12px 16px;border-radius:8px;z-index:100;display:none}
+@media(max-width:800px){.side{position:static;width:auto}.main{margin-left:0}.stats{grid-template-columns:1fr 1fr}.row{grid-template-columns:1fr}.nav{flex-wrap:wrap}.nav button{display:none}}
+</style>
+</head>
+<body>
+<div class="top">Limburg Power Solutions • Generator & Engine Spare Parts</div>
+<nav class="nav">
+  <div class="logo">Limburg <span>Power Solutions</span></div>
+  <button onclick="showStore()">Store</button>
+  <button onclick="showCart()">Cart <span id="cartCount" class="badge">0</span></button>
+  <button class="btn" onclick="openAdmin()">Admin</button>
+</nav>
+
+<section id="store">
+  <div class="hero">
+    <div class="wrap">
+      <h1>Generator Spare Parts</h1>
+      <p>Search by part number, old part number, product name or brand. Request products directly from the catalogue.</p>
+      <button class="btn" onclick="document.getElementById('products').scrollIntoView()">Browse Parts</button>
+    </div>
+  </div>
+  <div class="wrap section">
+    <h2>Spare Parts Catalogue</h2>
+    <div class="toolbar">
+      <input id="search" placeholder="Search part no., old part no., name, brand..." oninput="renderProducts()">
+      <select id="brandFilter" onchange="renderProducts()"><option value="">All Brands</option></select>
+      <select id="catFilter" onchange="renderProducts()"><option value="">All Categories</option></select>
+    </div>
+    <div id="products" class="grid"></div>
+  </div>
+</section>
+
+<section id="admin" class="admin hidden">
+  <aside class="side">
+    <b>ADMIN PANEL</b>
+    <hr>
+    <button class="active" onclick="adminPage('dashboard',this)">Dashboard</button>
+    <button onclick="adminPage('productsPage',this)">Products</button>
+    <button onclick="adminPage('ordersPage',this)">Orders / Requests</button>
+    <button onclick="adminPage('customersPage',this)">Customers</button>
+    <button onclick="logout()">Logout</button>
+  </aside>
+  <main class="main">
+    <div id="dashboard" class="adminpage">
+      <h2>Dashboard</h2>
+      <div class="stats">
+        <div class="stat"><div class="muted">Products</div><b id="sProducts">0</b></div>
+        <div class="stat"><div class="muted">Low Stock</div><b id="sLow">0</b></div>
+        <div class="stat"><div class="muted">Requests</div><b id="sOrders">0</b></div>
+        <div class="stat"><div class="muted">Customers</div><b id="sCustomers">0</b></div>
+      </div>
+      <div class="section"><h3>System Status</h3><div class="card"><div class="body" id="statusBox">Connecting...</div></div></div>
+    </div>
+    <div id="productsPage" class="adminpage hidden">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><h2>Products</h2><button class="btn" onclick="openProduct()">+ Add Product</button></div>
+      <div class="toolbar"><input id="adminSearch" placeholder="Search products..." oninput="renderAdminProducts()"></div>
+      <div class="tablewrap"><table class="table"><thead><tr><th>Photo</th><th>Name</th><th>Part No.</th><th>Old Part No.</th><th>Brand</th><th>Price</th><th>Stock</th><th>Actions</th></tr></thead><tbody id="adminProducts"></tbody></table></div>
+    </div>
+    <div id="ordersPage" class="adminpage hidden"><h2>Orders / Requests</h2><div class="tablewrap"><table class="table"><thead><tr><th>Date</th><th>Customer</th><th>Phone</th><th>Items</th><th>Status</th><th>Action</th></tr></thead><tbody id="adminOrders"></tbody></table></div></div>
+    <div id="customersPage" class="adminpage hidden"><h2>Customers</h2><div class="tablewrap"><table class="table"><thead><tr><th>Name</th><th>Company</th><th>Email</th><th>Phone</th><th>Created</th></tr></thead><tbody id="adminCustomers"></tbody></table></div></div>
+  </main>
+</section>
+
+<div id="modal" class="modal hidden"><div class="modalbox" id="modalBox"></div></div>
+<div id="toast" class="toast"></div>
+<button class="btn cart" onclick="showCart()">Cart <span id="cartCount2" class="badge">0</span></button>
+
+<script>
+/* ============================================================
+   1) SUPABASE CONNECTION
+   Create a free Supabase project and replace these two values.
+   ============================================================ */
+const SUPABASE_URL = "https://tqeqexkawnlilqbvtvci.supabase.co/rest/v1/";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRxZXFleGthd25saWxxYnZ0dmNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA4MTM1MDEsImV4cCI6MjEwNjM4OTUwMX0.aY8F_WX1Lvl1PItW19YLNr5VUtC7Msi2U6cxrEIp8sE";
+const db = supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+
+let products=[], cart=JSON.parse(localStorage.getItem("lps_cart")||"[]"), currentUser=null;
+
+const money=n=>new Intl.NumberFormat("en-BD",{style:"currency",currency:"BDT",maximumFractionDigits:2}).format(Number(n||0));
+const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+function toast(x){let t=document.getElementById("toast");t.textContent=x;t.style.display="block";setTimeout(()=>t.style.display="none",2200)}
+function saveCart(){localStorage.setItem("lps_cart",JSON.stringify(cart));updateCartCount()}
+function updateCartCount(){document.querySelectorAll("#cartCount,#cartCount2").forEach(x=>x.textContent=cart.reduce((a,b)=>a+b.qty,0))}
+function imgOrPlaceholder(url){return url?`<img src="${esc(url)}" onerror="this.style.display='none'">`:"<span class='muted'>No Photo</span>"}
+
+async function loadProducts(){
+  const {data,error}=await db.from("products").select("*").order("created_at",{ascending:false});
+  if(error){console.error(error);document.getElementById("statusBox").textContent="Database not connected. Check Supabase URL/key and SQL setup.";return}
+  products=data||[]; renderProducts(); renderFilters(); renderAdminProducts(); updateStats();
+  document.getElementById("statusBox").textContent="Connected to Supabase ✓";
+}
+function renderFilters(){
+  const brands=[...new Set(products.map(x=>x.brand).filter(Boolean))].sort();
+  const cats=[...new Set(products.map(x=>x.category).filter(Boolean))].sort();
+  document.getElementById("brandFilter").innerHTML='<option value="">All Brands</option>'+brands.map(x=>`<option>${esc(x)}</option>`).join("");
+  document.getElementById("catFilter").innerHTML='<option value="">All Categories</option>'+cats.map(x=>`<option>${esc(x)}</option>`).join("");
+}
+function matches(p,q){q=q.toLowerCase();return [p.name,p.part_no,p.old_part_no,p.brand,p.category, p.description].join(" ").toLowerCase().includes(q)}
+function renderProducts(){
+  const q=document.getElementById("search").value||"", b=document.getElementById("brandFilter").value, c=document.getElementById("catFilter").value;
+  const arr=products.filter(p=>matches(p,q)&&(!b||p.brand===b)&&(!c||p.category===c));
+  document.getElementById("products").innerHTML=arr.map(p=>`
+  <article class="card"><div class="pic">${imgOrPlaceholder(p.image_url)}</div><div class="body">
+  <div class="pn">${esc(p.part_no||"NO PART NUMBER")}</div><h3>${esc(p.name)}</h3>
+  <div class="muted">${esc(p.brand||"")} ${p.old_part_no?`• Old: ${esc(p.old_part_no)}`:""}</div>
+  <div class="price">${money(p.sale_price||p.price)}</div><div class="stock">${Number(p.stock)>0?`In Stock: ${p.stock}`:"Out of Stock"}</div>
+  <button class="btn" style="margin-top:10px;width:100%" ${Number(p.stock)<=0?"disabled":""} onclick="addCart('${p.id}')">Add To Request</button>
+  </div></article>`).join("") || "<p>No products found.</p>";
+}
+function addCart(id){let p=products.find(x=>x.id===id);if(!p)return;let x=cart.find(x=>x.id===id);x?x.qty++:cart.push({id:p.id,qty:1});saveCart();toast("Added to request");}
+function showCart(){
+  document.getElementById("modal").classList.remove("hidden");
+  const items=cart.map(i=>({...i,p:products.find(p=>p.id===i.id)})).filter(i=>i.p);
+  document.getElementById("modalBox").innerHTML=`<h2>Request Cart</h2>${items.map(i=>`<div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #eee"><div style="flex:1"><b>${esc(i.p.name)}</b><br><small>${esc(i.p.part_no)}</small></div><button onclick="cartQty('${i.id}',-1)">−</button><b>${i.qty}</b><button onclick="cartQty('${i.id}',1)">+</button><button onclick="cartRemove('${i.id}')">×</button></div>`).join("")||"<p>Cart is empty.</p>"}
+  ${items.length?`<div class="section"><b>Estimated Total: ${money(items.reduce((a,i)=>a+(Number(i.p.sale_price||i.p.price||0)*i.qty),0))}</b><button class="btn" style="width:100%;margin-top:12px" onclick="openRequest()">Send Request</button></div>`:""}<button class="btn secondary" onclick="closeModal()">Close</button>`;
+}
+function cartQty(id,n){let x=cart.find(x=>x.id===id);if(!x)return;x.qty+=n;if(x.qty<1)cart=cart.filter(y=>y.id!==id);saveCart();showCart()}
+function cartRemove(id){cart=cart.filter(x=>x.id!==id);saveCart();showCart()}
+function openRequest(){
+ document.getElementById("modalBox").innerHTML=`<h2>Customer Request</h2><form class="form" onsubmit="submitRequest(event)">
+ <div class="row"><input name="name" required placeholder="Customer Name"><input name="phone" required placeholder="Phone"></div>
+ <div class="row"><input name="email" type="email" placeholder="Email"><input name="company" placeholder="Company"></div>
+ <textarea name="address" placeholder="Delivery / Office Address"></textarea><textarea name="note" placeholder="Message / Requirement"></textarea>
+ <button class="btn">Submit Request</button><button type="button" class="btn secondary" onclick="showCart()">Back</button></form>`;
+}
+async function submitRequest(e){
+ e.preventDefault();let f=new FormData(e.target);
+ const items=cart.map(i=>{let p=products.find(p=>p.id===i.id);return {product_id:i.id,name:p?.name,part_no:p?.part_no,qty:i.qty}});
+ const {data:customer,error:ce}=await db.from("customers").insert([{name:f.get("name"),phone:f.get("phone"),email:f.get("email"),company:f.get("company"),address:f.get("address")}]).select().single();
+ if(ce){toast(ce.message);return}
+ const {error}=await db.from("orders").insert([{customer_id:customer.id,items,notes:f.get("note"),status:"New"}]);
+ if(error){toast(error.message);return}
+ cart=[];saveCart();closeModal();toast("Request submitted successfully");
+}
+function closeModal(){document.getElementById("modal").classList.add("hidden")}
+
+async function openAdmin(){
+ const {data}=await db.auth.getSession();
+ if(data.session){currentUser=data.session.user;enterAdmin();return}
+ document.getElementById("modal").classList.remove("hidden");
+ document.getElementById("modalBox").innerHTML=`<h2>Admin Login</h2><form class="form" onsubmit="login(event)">
+ <input name="email" type="email" required placeholder="Admin email"><input name="password" type="password" required placeholder="Password">
+ <button class="btn">Login</button><button type="button" class="btn secondary" onclick="closeModal()">Cancel</button>
+ </form><p class="muted">Admin users are created in Supabase Authentication.</p>`;
+}
+async function login(e){e.preventDefault();let f=new FormData(e.target);let {data,error}=await db.auth.signInWithPassword({email:f.get("email"),password:f.get("password")});if(error){toast(error.message);return}currentUser=data.user;closeModal();enterAdmin()}
+function enterAdmin(){document.getElementById("store").classList.add("hidden");document.getElementById("admin").classList.remove("hidden");updateStats();loadOrders();loadCustomers()}
+function showStore(){document.getElementById("admin").classList.add("hidden");document.getElementById("store").classList.remove("hidden")}
+async function logout(){await db.auth.signOut();currentUser=null;showStore();toast("Logged out")}
+function adminPage(id,btn){document.querySelectorAll(".adminpage").forEach(x=>x.classList.add("hidden"));document.getElementById(id).classList.remove("hidden");document.querySelectorAll(".side button").forEach(x=>x.classList.remove("active"));btn?.classList.add("active");if(id==="ordersPage")loadOrders();if(id==="customersPage")loadCustomers()}
+function updateStats(){document.getElementById("sProducts").textContent=products.length;document.getElementById("sLow").textContent=products.filter(x=>Number(x.stock)<=5).length}
+function renderAdminProducts(){
+ const q=(document.getElementById("adminSearch")?.value||"").toLowerCase();
+ document.getElementById("adminProducts").innerHTML=products.filter(p=>matches(p,q)).map(p=>`<tr><td>${p.image_url?`<img src="${esc(p.image_url)}" style="width:45px;height:45px;object-fit:contain">`:"—"}</td><td>${esc(p.name)}</td><td>${esc(p.part_no)}</td><td>${esc(p.old_part_no||"")}</td><td>${esc(p.brand||"")}</td><td>${money(p.sale_price||p.price)}</td><td>${p.stock}</td><td class="actions"><button class="btn secondary" onclick="openProduct('${p.id}')">Edit</button><button class="btn danger" onclick="deleteProduct('${p.id}')">Delete</button></td></tr>`).join("");
+}
+function openProduct(id){
+ let p=products.find(x=>x.id===id)||{name:"",part_no:"",old_part_no:"",brand:"",category:"",price:"",sale_price:"",stock:0,image_url:"",description:""};
+ document.getElementById("modal").classList.remove("hidden");
+ document.getElementById("modalBox").innerHTML=`<h2>${id?"Edit":"Add"} Product</h2><form class="form" onsubmit="saveProduct(event,'${id||""}')">
+ <div class="row"><input name="name" required value="${esc(p.name)}" placeholder="Product name"><input name="part_no" required value="${esc(p.part_no)}" placeholder="New / Current Part Number"></div>
+ <div class="row"><input name="old_part_no" value="${esc(p.old_part_no)}" placeholder="Old Part Number"><input name="brand" value="${esc(p.brand)}" placeholder="Brand"></div>
+ <div class="row"><input name="category" value="${esc(p.category)}" placeholder="Category"><input name="stock" type="number" value="${p.stock}" placeholder="Stock"></div>
+ <div class="row"><input name="price" type="number" step="0.01" value="${p.price}" placeholder="Regular Price"><input name="sale_price" type="number" step="0.01" value="${p.sale_price}" placeholder="Sale Price"></div>
+ <input name="image_url" value="${esc(p.image_url)}" placeholder="Product image URL">
+ <textarea name="description" placeholder="Description">${esc(p.description)}</textarea>
+ <button class="btn">Save Product</button><button type="button" class="btn secondary" onclick="closeModal()">Cancel</button></form>`;
+}
+async function saveProduct(e,id){e.preventDefault();let f=new FormData(e.target);let obj={name:f.get("name"),part_no:f.get("part_no"),old_part_no:f.get("old_part_no"),brand:f.get("brand"),category:f.get("category"),stock:Number(f.get("stock")||0),price:Number(f.get("price")||0),sale_price:Number(f.get("sale_price")||0),image_url:f.get("image_url"),description:f.get("description")};let r=id?await db.from("products").update(obj).eq("id",id):await db.from("products").insert([obj]);if(r.error){toast(r.error.message);return}closeModal();await loadProducts();toast("Product saved")}
+async function deleteProduct(id){if(!confirm("Delete this product?"))return;let {error}=await db.from("products").delete().eq("id",id);if(error)toast(error.message);else{await loadProducts();toast("Deleted")}}
+async function loadOrders(){let {data,error}=await db.from("orders").select("*,customers(name,phone,email,company)").order("created_at",{ascending:false});if(error)return;document.getElementById("sOrders").textContent=data.length;document.getElementById("adminOrders").innerHTML=data.map(o=>`<tr><td>${new Date(o.created_at).toLocaleString()}</td><td>${esc(o.customers?.name)}</td><td>${esc(o.customers?.phone)}</td><td>${esc((o.items||[]).map(i=>i.part_no+" × "+i.qty).join(", "))}</td><td><select onchange="changeOrder('${o.id}',this.value)"><option ${o.status==="New"?"selected":""}>New</option><option ${o.status==="Quoted"?"selected":""}>Quoted</option><option ${o.status==="Confirmed"?"selected":""}>Confirmed</option><option ${o.status==="Completed"?"selected":""}>Completed</option><option ${o.status==="Cancelled"?"selected":""}>Cancelled</option></select></td><td><button class="btn secondary" onclick="printOrder('${o.id}')">Print</button></td></tr>`).join("")}
+async function changeOrder(id,status){await db.from("orders").update({status}).eq("id",id);toast("Status updated")}
+async function loadCustomers(){let {data,error}=await db.from("customers").select("*").order("created_at",{ascending:false});if(error)return;document.getElementById("sCustomers").textContent=data.length;document.getElementById("adminCustomers").innerHTML=data.map(c=>`<tr><td>${esc(c.name)}</td><td>${esc(c.company||"")}</td><td>${esc(c.email||"")}</td><td>${esc(c.phone||"")}</td><td>${new Date(c.created_at).toLocaleDateString()}</td></tr>`).join("")}
+async function printOrder(id){let {data:o}=await db.from("orders").select("*,customers(*)").eq("id",id).single();if(!o)return;let w=window.open("","_blank");w.document.write(`<html><head><title>Request</title><style>body{font-family:Arial;padding:40px}table{width:100%;border-collapse:collapse}td,th{border:1px solid #ddd;padding:8px}</style></head><body><h1>Limburg Power Solutions</h1><h2>Customer Request</h2><p><b>Customer:</b> ${esc(o.customers?.name)}<br><b>Phone:</b> ${esc(o.customers?.phone)}<br><b>Company:</b> ${esc(o.customers?.company||"")}<br><b>Date:</b> ${new Date(o.created_at).toLocaleString()}</p><table><tr><th>Part No.</th><th>Product</th><th>Qty</th></tr>${(o.items||[]).map(i=>`<tr><td>${esc(i.part_no)}</td><td>${esc(i.name)}</td><td>${i.qty}</td></tr>`).join("")}</table><script>window.print()<\/script></body></html>`);w.document.close()}
+
+db.auth.onAuthStateChange((event,session)=>{if(session)currentUser=session.user});
+updateCartCount();
+loadProducts();
+</script>
+</body>
+</html>
